@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}">
+    <link rel="stylesheet" href="{{url_for('static',filename='post-loader.css')}}">
+    {% block title %}
+        
+    {% endblock title %}
+    {% block links %}
+        
+    {% endblock links %}
+
+    
+        {% block css %}
+
+        {% endblock css %}
+    
+    <style>
+       
+    </style>
+</head>
+<body>
+    <!-- Post submission loader -->
+    <div class="post-loader-wrapper">
+        <div class="post-loader"></div>
+        <div class="post-loader-text">Processing...</div>
+    </div>
+
+    <div class="loader-wrapper">
+        <span class="loader"></span>
+    </div>
+
+    <div class="navbar">
+        <a href="/" class="logo"><img src="{{url_for('static',filename='Scan.png')}}" alt="Logo"></a>
+        <div class="anchor">
+        <a href="/#hero" >Home</a>
+        <a href="/#atsscore" >ATS Score</a>
+        <a href="/#atsguide" >Guide</a>
+        <a href="/#coverletter" >Ai Cover Letter</a>
+        <a href="/#medicaldata" >Medical Data Extraction</a>
+        
+        </div>
+        <div class="accountparent">
+            <div class="account-dropdown">
+            <button class="account-btn">
+                {% if current_user.is_authenticated %}
+                    {{ current_user.name }}
+                {% else %}
+                    Sign In
+                {% endif %}
+                <span class="arrow">&#9662;</span>
+            </button>
+            <div class="dropdown-menu">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('logout') }}">Sign Out</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Sign In</a>
+                    <a href="{{ url_for('signup') }}">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+        
+    </div>
+
+    {% block body %}
+        
+    {% endblock body %}
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            // Prevent multiple submissions
+            if (form.getAttribute('data-submitting')) {
+                e.preventDefault();
+                return;
+            }
+            
+            form.setAttribute('data-submitting', 'true');
+            document.querySelector('.post-loader-wrapper').classList.add('show-loader');
+        });
+    });
+});
+    </script>
+    <script src="{{url_for('static',filename='post-loader.js')}}"></script>
+</body>
+</html>
