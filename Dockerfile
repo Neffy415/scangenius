@@ -1,4 +1,7 @@
 FROM python:3.11-slim-buster
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+...
 
 WORKDIR /app
 
