@@ -152,8 +152,11 @@ def is_image(filepath):
 # Define PDF to text conversion function
 def pdf_to_text(filepath):
     try:
-        # Convert PDF to images (higher DPI for better text quality)
-        images = convert_from_path(filepath, dpi=300, poppler_path=r"C:\Program Files (x86)\poppler-24.08.0\Library\bin")
+       if platform.system() == "Windows":
+         images = convert_from_path(filepath, dpi=300, poppler_path=r"C:\Program Files (x86)\poppler-24.08.0\Library\bin")
+       else:
+    # On Linux, poppler-utils is installed via apt and in PATH
+        images = convert_from_path(filepath, dpi=300)
 
         text_list = []  # Store extracted text for each page
 
@@ -185,7 +188,6 @@ def pdf_to_text(filepath):
     except Exception as e:
         print(f"Error processing PDF: {str(e)}")
         return ""
-
 
 
 
