@@ -21,7 +21,7 @@ opencv-python==4.11.0.86
 packaging==24.2
 pdf2image==1.17.0
 pillow==11.1.0
-psycopg2==2.9.10
+psycopg2-binary
 pydantic==2.11.0a2
 pydantic_core==2.29.0
 pytesseract==0.3.13
