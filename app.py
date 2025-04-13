@@ -13,6 +13,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
+
 # Flask App Initialization
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Required for session handling
@@ -28,7 +29,7 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
 # Load Google Gemini API key from environment variables
  # Ensure the API key is stored securely
 
-app.config['SQLALCHEMY_DATABASE_URI']='postgresql://postgres:Titto123@localhost:5432/scangenius'
+app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("database")
 db=SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
@@ -448,7 +449,7 @@ You are an expert in professional cover letter writing. Generate a **{cover_styl
 - **Ensure all placeholders (e.g., [Your Name], [Your Email]) are properly replaced with the user inputs.**
 - ** Directly put fields like [Your name:] to actual name which is provided in user input and similarly for other fields.
 - ** Dont give any Introductions or suggestions at all just generate only the cover letter with the information you have.
--** Dont mention fields like [Your Name]
+-** Dont mention fields like [Your Name] and don't ever put "**" in lines.
 - 
 
 ✍ **Generate a structured, impactful, and personalized cover letter that makes the applicant stand out.** Keep it professional and directly aligned with the job description.
