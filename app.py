@@ -13,7 +13,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
-
+import platform
 # Flask App Initialization
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Required for session handling
@@ -24,7 +24,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Set up Tesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
 
 # Load Google Gemini API key from environment variables
  # Ensure the API key is stored securely
