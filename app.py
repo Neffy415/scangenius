@@ -14,6 +14,10 @@ from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
 import platform
+
+import logging
+import gc
+import tempfile
 # Flask App Initialization
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Required for session handling
@@ -151,79 +155,106 @@ def is_image(filepath):
 
 # Define PDF to text conversion function
 def pdf_to_text(filepath):
+    """Converts PDF to text using pdf2image and Tesseract OCR with optimizations."""
+    logging.info("--- pdf_to_text() called ---")
+    logging.info(f"Input filepath: {filepath}")
     try:
-       if platform.system() == "Windows":
-         images = convert_from_path(filepath, dpi=300, poppler_path=r"C:\Program Files (x86)\poppler-24.08.0\Library\bin")
-       else:
-    # On Linux, poppler-utils is installed via apt and in PATH
-        images = convert_from_path(filepath, dpi=300)
+        # 1. Determine poppler_path based on the OS
+        poppler_path = None
+        if platform.system() == "Windows":
+            poppler_path = r"C:\Program Files (x86)\poppler-24.08.0\Library\bin"  # Adjust if needed
+            logging.info(f"Running on Windows, poppler_path: {poppler_path}")
+        else:
+            logging.info("Running on Linux, using system PATH for poppler-utils")
 
-        text_list = []  # Store extracted text for each page
+        # 2. Use a temporary directory for images (memory management)
+        with tempfile.TemporaryDirectory() as tempdir:
+            logging.info(f"Using temporary directory: {tempdir}")
+            images = convert_from_path(filepath, dpi=150, output_folder=tempdir, fmt='ppm',
+                                        use_pdftocairo=True, poppler_path=poppler_path)  # Lower DPI
+            logging.info(f"Converted PDF to {len(images)} images")
 
-        for img in images:
-            # Convert image to NumPy array for OpenCV processing
-            img_np = np.array(img)
+            text_list = []
+            for i, img in enumerate(images):
+                logging.info(f"Processing image {i + 1}/{len(images)}")
+                img_np = np.array(img)
 
-            # Convert to grayscale (improves OCR accuracy)
-            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+                # 3. Resize (optimized)
+                max_dimension = 800  # Adjust as needed
+                height, width = img_np.shape[:2]
+                if max(height, width) > max_dimension:
+                    scale = max_dimension / max(height, width)
+                    new_height = int(height * scale)
+                    new_width = int(width * scale)
+                    img_resized = cv2.resize(img_np, (new_width, new_width),
+                                            interpolation=cv2.INTER_AREA)  # Efficient shrinking
+                    del img_np  # Release original image memory
+                    img_np = img_resized
 
-            # Apply adaptive thresholding to enhance contrast
-            processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+                processed = cv2.adaptiveThreshold(gray, 255,
+                                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                cv2.THRESH_BINARY, 11, 2)
+                denoised = cv2.fastNlMeansDenoising(processed, None, 20, 7,
+                                                21)  # Adjusted params
 
-            # Denoising to reduce background noise
-            denoised = cv2.fastNlMeansDenoising(processed, None, 30, 7, 21)
+                text = pytesseract.image_to_string(denoised, config="--psm 6")
+                text_list.append(text)
 
-            # Resize to improve OCR readability
-            scale_factor = 1.5  # Increase image size by 150%
-            height, width = denoised.shape
-            resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
+                del img_np, gray, processed, denoised  # Release intermediate arrays
+                gc.collect()  # Suggest garbage collection
 
-            # Extract text using Pytesseract
-            text = pytesseract.image_to_string(resized, config="--psm 6")  # PSM 6 works best for blocks of text
-
-            text_list.append(text)  # Append extracted text
-
-        return "\n".join(text_list)  # Return full extracted text
+            logging.info("PDF processing complete")
+            return "\n".join(text_list)
 
     except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
+        logging.exception(f"Error processing PDF {filepath}: {str(e)}")
         return ""
 
 
 
+
 def extract_text_from_image(filepath):
-    """ Extracts text from an uploaded resume image using Tesseract OCR with preprocessing """
+    """Extracts text from an uploaded resume image using Tesseract OCR with preprocessing."""
     try:
         if is_image(filepath):
+            logging.info(f"Processing image file: {filepath}")
             img = cv2.imread(filepath)
             if img is None:
-                return None  # Handle file read errors
-            
-            # Convert to grayscale
+                logging.error(f"cv2.imread failed to load: {filepath}")
+                return ""  # Return empty string instead of None
+
+            # Resize (optimized)
+            max_dimension = 1000  # Adjust as needed
+            height, width = img.shape[:2]
+            if max(height, width) > max_dimension:
+                scale = max_dimension / max(height, width)
+                new_height = int(height * scale)
+                new_width = int(width * scale)
+                img_resized = cv2.resize(img, (new_width, new_width),
+                                         interpolation=cv2.INTER_AREA)  # Efficient shrinking
+                del img  # Release original image memory
+                img = img_resized
+
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            processed = cv2.adaptiveThreshold(gray, 255,
+                                            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                            cv2.THRESH_BINARY, 11, 2)
+            denoised = cv2.fastNlMeansDenoising(processed, None, 20, 7,
+                                            21)  # Adjusted params
 
-            # Apply adaptive thresholding to enhance contrast
-            processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-            # Denoising to remove background noise
-            denoised = cv2.fastNlMeansDenoising(processed, None, 30, 7, 21)
-
-            # Resize image to improve OCR recognition
-            scale_factor = 1.5  # Enlarge by 150%
-            height, width = denoised.shape
-            resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
-
-            # Apply OCR with proper settings
-            custom_config = r'--oem 3 --psm 6'  # OEM 3: Default engine, PSM 6: Block of text
-            res = pytesseract.image_to_string(resized, config=custom_config)
+            text = pytesseract.image_to_string(denoised, config="--psm 6")
+            del gray, processed, denoised, img  # Release intermediate arrays
+            gc.collect()  # Suggest garbage collection
+            return text
 
         else:
-            res = pdf_to_text(filepath)  # Handle PDFs separately
-
-        return res
+            logging.info(f"Calling pdf_to_text for: {filepath}")
+            text = pdf_to_text(filepath)  # Handle PDFs separately
+            return text
 
     except Exception as e:
-        print(f"Error processing image: {str(e)}")
+        logging.exception(f"Error processing {filepath}: {str(e)}")
         return ""
 
 
