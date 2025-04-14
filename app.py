@@ -150,7 +150,7 @@ def is_image(filepath):
 def pdf_to_text(filepath):
     try:
         # Convert PDF to images (higher DPI for better text quality)
-        images = convert_from_path(filepath, dpi=300)
+        images = convert_from_path(filepath, dpi=100)
 
         text_list = []  # Store extracted text for each page
 
