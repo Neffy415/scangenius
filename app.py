@@ -150,7 +150,7 @@ def is_image(filepath):
 def pdf_to_text(filepath):
     try:
         # Convert PDF to images (higher DPI for better text quality)
-        images = convert_from_path(filepath, dpi=300, poppler_path=r"C:\Program Files (x86)\poppler-24.08.0\Library\bin")
+        images = convert_from_path(filepath, dpi=300")
 
         text_list = []  # Store extracted text for each page
 
