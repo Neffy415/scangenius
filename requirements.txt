@@ -39,3 +39,4 @@ pytz==2025.2          # Timezone support, often used with datetime/SQLAlchemy
 
 # --- Potentially Unnecessary ---
 # websockets==14.2 # Remove unless your app specifically uses WebSockets
+mimetypes
