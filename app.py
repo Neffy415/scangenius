@@ -1,18 +1,18 @@
 import os
-import cv2
 import pytesseract
 from google import genai
 from flask import Flask, render_template, request, redirect, url_for, session,flash
 import re
 import mimetypes
-from pdf2image import convert_from_path
-import numpy as np
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
+from PyPDF2 import PdfReader
+import easyocr
+
 # Flask App Initialization
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Required for session handling
@@ -23,6 +23,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Set up Tesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
 
 # Load Google Gemini API key from environment variables
  # Ensure the API key is stored securely
@@ -147,50 +148,13 @@ def is_image(filepath):
     return False
 
 # Define PDF to text conversion function
-# Modified pdf_to_text
 def pdf_to_text(filepath):
-    try:
-        # Get page count first if possible, or just iterate
-        # Note: poppler_path needs to be configured for Render (see below)
-        # Might need poppler utils installed on Render
-        page_images = convert_from_path(filepath, dpi=150, poppler_path=None) # Use system path on Render
-
-        full_text = []
-        for i, img in enumerate(page_images):
-            print(f"Processing page {i+1}...") # Add logging
-            img_np = np.array(img)
-            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-            denoised = cv2.fastNlMeansDenoising(processed, None, 30, 7, 21)
-
-            # Optional: Apply resizing here if still needed
-            scale_factor = 1.0 # Try without scaling first
-            if scale_factor != 1.0:
-                height, width = denoised.shape
-                resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
-                text = pytesseract.image_to_string(resized, config="--psm 6")
-                del resized # Explicitly free memory
-            else:
-                text = pytesseract.image_to_string(denoised, config="--psm 6")
-
-            full_text.append(text)
-
-            # Clean up intermediate objects for this page
-            del img_np, gray, processed, denoised, img
-            # import gc # Optional: Force garbage collection if needed
-            # gc.collect()
-
-        return "\n".join(full_text)
-
-    except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
-        return ""
-    finally:
-         # Ensure cleanup even if error occurs mid-processing
-         if 'page_images' in locals():
-             del page_images # Attempt to clear the list of images
-         # import gc
-         # gc.collect()
+    reader = PdfReader(filepath)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    print(text)
+    return text
 
 
 
@@ -199,27 +163,14 @@ def extract_text_from_image(filepath):
     """ Extracts text from an uploaded resume image using Tesseract OCR with preprocessing """
     try:
         if is_image(filepath):
-            img = cv2.imread(filepath)
-            if img is None:
-                return None  # Handle file read errors
+            reader = easyocr.Reader(['en'], gpu=False)
+    
+
+            result = reader.readtext(filepath)
+    
+            text = '\n'.join([detection[1] for detection in result])
+            return text if text else "No text detected in the image"
             
-            # Convert to grayscale
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-            # Apply adaptive thresholding to enhance contrast
-            processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-            # Denoising to remove background noise
-            denoised = cv2.fastNlMeansDenoising(processed, None, 30, 7, 21)
-
-            # Resize image to improve OCR recognition
-            scale_factor = 1.5  # Enlarge by 150%
-            height, width = denoised.shape
-            resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
-
-            # Apply OCR with proper settings
-            custom_config = r'--oem 3 --psm 6'  # OEM 3: Default engine, PSM 6: Block of text
-            res = pytesseract.image_to_string(resized, config=custom_config)
 
         else:
             res = pdf_to_text(filepath)  # Handle PDFs separately
