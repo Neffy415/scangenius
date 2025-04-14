@@ -147,41 +147,50 @@ def is_image(filepath):
     return False
 
 # Define PDF to text conversion function
+# Modified pdf_to_text
 def pdf_to_text(filepath):
     try:
-        # Convert PDF to images (higher DPI for better text quality)
-        images = convert_from_path(filepath, dpi=100)
+        # Get page count first if possible, or just iterate
+        # Note: poppler_path needs to be configured for Render (see below)
+        # Might need poppler utils installed on Render
+        page_images = convert_from_path(filepath, dpi=150, poppler_path=None) # Use system path on Render
 
-        text_list = []  # Store extracted text for each page
-
-        for img in images:
-            # Convert image to NumPy array for OpenCV processing
+        full_text = []
+        for i, img in enumerate(page_images):
+            print(f"Processing page {i+1}...") # Add logging
             img_np = np.array(img)
-
-            # Convert to grayscale (improves OCR accuracy)
             gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-
-            # Apply adaptive thresholding to enhance contrast
             processed = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-            # Denoising to reduce background noise
             denoised = cv2.fastNlMeansDenoising(processed, None, 30, 7, 21)
 
-            # Resize to improve OCR readability
-            scale_factor = 1.5  # Increase image size by 150%
-            height, width = denoised.shape
-            resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
+            # Optional: Apply resizing here if still needed
+            scale_factor = 1.0 # Try without scaling first
+            if scale_factor != 1.0:
+                height, width = denoised.shape
+                resized = cv2.resize(denoised, (int(width * scale_factor), int(height * scale_factor)), interpolation=cv2.INTER_CUBIC)
+                text = pytesseract.image_to_string(resized, config="--psm 6")
+                del resized # Explicitly free memory
+            else:
+                text = pytesseract.image_to_string(denoised, config="--psm 6")
 
-            # Extract text using Pytesseract
-            text = pytesseract.image_to_string(resized, config="--psm 6")  # PSM 6 works best for blocks of text
+            full_text.append(text)
 
-            text_list.append(text)  # Append extracted text
+            # Clean up intermediate objects for this page
+            del img_np, gray, processed, denoised, img
+            # import gc # Optional: Force garbage collection if needed
+            # gc.collect()
 
-        return "\n".join(text_list)  # Return full extracted text
+        return "\n".join(full_text)
 
     except Exception as e:
         print(f"Error processing PDF: {str(e)}")
         return ""
+    finally:
+         # Ensure cleanup even if error occurs mid-processing
+         if 'page_images' in locals():
+             del page_images # Attempt to clear the list of images
+         # import gc
+         # gc.collect()
 
 
 
