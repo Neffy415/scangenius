@@ -1,29 +1,31 @@
 FROM python:3.11-slim-buster
+
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Set working directory
 WORKDIR /app
 
-# Update and upgrade system packages *before* copying requirements
+# Update system packages
 RUN apt-get update -y && apt-get upgrade -y
 
-# Install PostgreSQL client development libraries (if needed)
-RUN apt-get install -y libpq-dev
+# Install system dependencies
+RUN apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libgl1 \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    poppler-utils \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install OpenGL libraries for OpenCV
-RUN apt-get install -y libgl1
-
-# Copy requirements *after* installing system deps
+# Copy Python requirements first to leverage Docker caching
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install -r requirements.txt --no-cache-dir
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Tesseract OCR engine and the English language pack.
-RUN apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
-
-# Install poppler-utils for PDF processing (if needed).
-RUN apt-get install -y --no-install-recommends poppler-utils
-
+# Copy app source code into container
 COPY . .
 
+# Start app with gunicorn
 CMD ["gunicorn", "app:app"]
