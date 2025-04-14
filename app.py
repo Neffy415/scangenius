@@ -23,7 +23,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # Set up Tesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
 
 # Load Google Gemini API key from environment variables
  # Ensure the API key is stored securely
