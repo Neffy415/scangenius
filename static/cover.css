@@ -162,26 +162,79 @@ input[type="file"]{
   color:white;
 }
 
-@media (max-width: 768px){
-    form{
+@media (max-width: 768px) {
+    .containerf {
+        padding-top: 150px;  /* Increased from 100px to create more space */
+        width: 100%;
+        padding-left: 15px;
+        padding-right: 15px;
+        margin-bottom: 20px; /* Add bottom margin for spacing */
+    }
+
+    form {
         display: grid;
         grid-template-columns: 1fr;
-        width:54vh;
-        height:auto;
+        width: 90%;         /* Changed from 54vh to percentage */
+        height: auto;
+        padding: 15px;      /* Reduced padding */
+        margin: 0 auto;
+        max-width: 500px;   /* Add max-width for larger phones */
+        position: relative;  /* Add relative positioning */
+        top: 20px;          /* Move form down slightly */
+        margin-bottom: 40px; /* Add bottom margin */
     }
 
-    .containerf{
-      padding-top:250px;
+    .formitem {
+        margin-bottom: 12px;
+        width: 100%;
     }
 
-    .containerf h2{
-      padding-top:35px;
-      padding-bottom: 30px;
+    .formitem img {
+        height: 25px;    /* Reduced icon size */
+        width: 25px;
+        left: -10px;     /* Adjusted position */
     }
 
-    .containerf p{
-      font-size: 0.9rem;
+    .formitem .inputfield {
+        padding: 8px;    /* Added padding for better touch targets */
+        font-size: 16px; /* Readable font size on mobile */
     }
-    
 
+    textarea {
+        height: 60px;   /* Slightly reduced height */
+    }
+
+    .buttons {
+        gap: 15px;      /* Reduced gap */
+        top: 0;         /* Remove top spacing */
+        flex-wrap: wrap; /* Allow buttons to wrap */
+    }
+
+    .buttons button {
+        padding: 10px 15px;
+        font-size: 14px;
+        width: 100%;     /* Full width buttons */
+        max-width: 200px;
+    }
+
+    .Second {
+        font-size: 18px; /* Reduced font size */
+        top: 0;          /* Remove top spacing */
+        margin: 15px 0;
+    }
+
+    h2 {
+        font-size: 20px; /* Reduced heading size */
+        padding: 6px;
+    }
+
+    .covericon {
+        left: -20px;    /* Adjusted position */
+    }
+
+    .heading {
+        position: relative;
+        z-index: 2;         /* Ensure heading stays above form */
+        margin-bottom: 30px; /* Add space below heading */
+    }
 }
