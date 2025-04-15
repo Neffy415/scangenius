@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 from PyPDF2 import PdfReader
 import easyocr
+from datetime import datetime
+import pytz
 
 # Flask App Initialization
 app = Flask(__name__)
@@ -21,11 +23,9 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Set up Tesseract
-
-
-# Load Google Gemini API key from environment variables
- # Ensure the API key is stored securely
+IST=pytz.timezone('Asia/Kolkata')
+def get_ist_time():
+    return datetime.now(IST)
 
 app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("database")
 db=SQLAlchemy(app)
@@ -52,14 +52,14 @@ class ats(db.Model):
     keyword_score=db.Column(db.String(10))
     industry=db.Column(db.String(10))
     result=db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=db.func.now())
+    created_at = db.Column(db.DateTime, default=get_ist_time)
 
 class coverletter(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id'))
     style=db.Column(db.String(20))
     cover=db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=db.func.now())
+    created_at = db.Column(db.DateTime, default=get_ist_time)
 
 
 
