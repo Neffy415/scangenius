@@ -6,16 +6,15 @@ body{
     }
     .navbar {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    /* Space between elements */
-    padding: 0;
-    margin: 0;
-    background-color:white;
-    height:80px;
+    padding: 15px 50px;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    width: 100%;
     position: fixed;
-    top:0;
-    width:100%;
-    z-index: 2;
+    top: 0;
+    z-index: 1000;
     }
     
     .navbar img{
@@ -40,10 +39,10 @@ body{
     }
     .anchor{
     display: flex;
-    gap:40px;
+    gap: 30px;
     position: relative;
     left:40px;
-    
+   
     
     }
 
@@ -191,11 +190,7 @@ body{
     /* Responsive Styles */
 @media (max-width: 768px) {
     .navbar {
-        flex-direction: column; /* Stack logo and links vertically */
-        height: auto; /* Adjust height to content */
-        padding: 10px; /* Add padding for better spacing */
-        align-items: center; /* Center items horizontally */
-        height:40%;
+        padding: 15px 20px;  /* Reduced padding on mobile */
     }
 
     .navbar img {
@@ -233,23 +228,33 @@ body{
     
     .accountparent{
         position: relative;
-        right:68%;
-    
+        right: 0;
+        padding-right: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .account-dropdown {
+        margin: 10px auto;
     }
 }
 
 .accountparent{
     display: flex;
+    position: relative;
+    margin-left: auto;
+    padding-right: 20px;
+    right:100px;
 }
 
 
 .account-dropdown {
     position: relative;
     display: flex;
-    left:320px;
     border:3px solid red;
     border-radius: 8px;
     width:110px;
+    /* Remove the left property that was pushing it too far */
 }
 
 .account-btn {
@@ -436,5 +441,202 @@ body{
         width: 50%;
         margin: 0 auto;
         display: block;
+    }
+}
+
+.hamburger {
+    display: none;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+}
+
+.bar {
+    display: block;
+    width: 25px;
+    height: 3px;
+    margin: 5px auto;
+    transition: all 0.3s ease-in-out;
+    background-color: #333;
+}
+
+@media screen and (max-width: 768px) {
+    .hamburger {
+        display: block;
+        position: relative;
+        right:50px;
+    }
+
+    .hamburger.active .bar:nth-child(2) {
+        opacity: 0;
+    }
+
+    .hamburger.active .bar:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+
+    .hamburger.active .bar:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    }
+
+    .nav-links {
+        position: fixed;
+        left: -200%;
+        top: 70px;
+        gap: 0;
+        flex-direction: column;
+        background-color: white;
+        width: 100%;
+        text-align: center;
+        transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-links.active {
+        left: 0;
+        width:100vh;
+        top:110px;
+    }
+
+    .anchor {
+        flex-direction: column;
+        padding: 1rem 0;
+    }
+
+    .anchor a {
+        margin: 0.5rem 0;
+    }
+
+    .accountparent {
+        margin: 1rem 0;
+    }
+
+    .navbar {
+        padding: 1rem;
+        justify-content: space-between;
+    }
+}
+
+.logo img {
+    height: 50px;  /* Adjust this value to match your logo's desired size */
+    width: auto;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    justify-content: space-between;
+    margin-left: 50px;
+}
+
+.anchor a {
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.anchor a:hover {
+    color: #FF3D00;
+}
+
+@media screen and (max-width: 768px) {
+    /* Fix container centering */
+    body {
+        padding: 0;
+        margin: 0;
+        left: 0;  /* Remove left padding from body */
+    }
+
+    .containerd {
+        width: 95%;
+        height: 640px;
+        padding: 15px;
+        margin: 10px auto;
+        left: 0;  /* Remove any left positioning */
+        right: 0;
+        position: relative;
+    }
+
+    /* Fix nav-links centering */
+    .nav-links {
+        position: fixed;
+        left: -100%;  /* Changed from -200% */
+        top: 70px;
+        gap: 0;
+        flex-direction: column;
+        background-color: white;
+        width: 100vw;  /* Use viewport width */
+        text-align: center;
+        transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-left: 0;  /* Remove margin */
+    }
+
+    .nav-links.active {
+        left: 0;
+        width: 100%;  /* Changed from 100vh */
+        top: 110px;
+    }
+
+    /* Center anchor links */
+    .anchor {
+        flex-direction: column;
+        padding: 1rem 0;
+        left: 0;  /* Remove left positioning */
+        width: 100%;
+        align-items: center;
+    }
+
+    .anchor a {
+        margin: 0.5rem 0;
+        position: static;  /* Remove relative positioning */
+        right: 0;  /* Remove right positioning */
+        width: auto;
+    }
+
+    /* Adjust navbar padding */
+    .navbar {
+        padding: 1rem;
+        width: 100%;
+        left: 0;
+        right: 0;
+    }
+
+    .accountparent {
+        position: relative;
+        right: 0;
+        left: 0;
+        padding: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .account-dropdown {
+        margin: 10px auto;
+        position: relative;
+        left: 0;
+        right: 0;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        top: 100%;
+        width: 150px;
+        text-align: center;
+    }
+
+    .account-dropdown:hover .dropdown-menu {
+        left: 50%;
+        transform: translateX(-50%);
+        position: absolute;
     }
 }
