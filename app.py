@@ -1,4 +1,5 @@
 import os
+import pytesseract
 from google import genai
 from flask import Flask, render_template, request, redirect, url_for, session,flash
 import re
@@ -13,6 +14,11 @@ from PyPDF2 import PdfReader
 import easyocr
 from datetime import datetime
 import pytz
+IST = pytz.timezone('Asia/Kolkata')
+
+def get_ist_time():
+    # Get current UTC time and convert to IST
+    return datetime.now(pytz.UTC).astimezone(IST)
 
 # Flask App Initialization
 app = Flask(__name__)
@@ -23,9 +29,11 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-IST=pytz.timezone('Asia/Kolkata')
-def get_ist_time():
-    return datetime.now(IST)
+# Set up Tesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\tesseract.exe"
+
+# Load Google Gemini API key from environment variables
+ # Ensure the API key is stored securely
 
 app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("database")
 db=SQLAlchemy(app)
@@ -52,23 +60,19 @@ class ats(db.Model):
     keyword_score=db.Column(db.String(10))
     industry=db.Column(db.String(10))
     result=db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=get_ist_time)
+    created_at = db.Column(db.DateTime(timezone=True), default=get_ist_time)
 
 class coverletter(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id'))
     style=db.Column(db.String(20))
     cover=db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=get_ist_time)
+    created_at = db.Column(db.DateTime(timezone=True), default=get_ist_time)
 
 
 
 with app.app_context():
-    inspector = inspect(db.engine)  # Get database inspector
-    existing_tables = inspector.get_table_names()  # List of existing tables
-
-    # Check if required tables exist before creating them
-    if not {"users", "ats", "coverletter"}.issubset(set(existing_tables)):
+    
         db.create_all()
 
 
@@ -152,7 +156,7 @@ def pdf_to_text(filepath):
     text = ""
     for page in reader.pages:
         text += page.extract_text()
-    print(text)
+
     return text
 
 
@@ -281,7 +285,6 @@ You are an expert in ATS resume scoring. Given the extracted resume text below, 
 
     # Call Google Gemini API
     response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-    print(response)
 
     return response.text if response else "Error: No response from AI."
 
