@@ -1,5 +1,4 @@
 import os
-
 from google import genai
 from flask import Flask, render_template, request, redirect, url_for, session,flash
 import re
@@ -12,13 +11,20 @@ from dotenv import load_dotenv
 load_dotenv()
 from PyPDF2 import PdfReader
 import easyocr
-from datetime import datetime
+from sqlalchemy_utc import UtcDateTime
+from datetime import datetime, timezone
 import pytz
-IST = pytz.timezone('Asia/Kolkata')
+import fitz  # PyMuPDF
 
+# Remove the existing IST timezone code and replace with this
 def get_ist_time():
-    # Get current UTC time and convert to IST
-    return datetime.now(pytz.UTC).astimezone(IST)
+    """Get current time in IST with proper timezone handling"""
+    ist = pytz.timezone('Asia/Kolkata')
+    # Create timezone-aware UTC time first
+    utc_time = datetime.now(timezone.utc)
+    # Convert to IST
+    ist_time = utc_time.astimezone(ist)
+    return ist_time
 
 # Flask App Initialization
 app = Flask(__name__)
@@ -28,8 +34,6 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY")  # Required for session handling
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-# Set up Tesseract
 
 
 # Load Google Gemini API key from environment variables
@@ -60,14 +64,16 @@ class ats(db.Model):
     keyword_score=db.Column(db.String(10))
     industry=db.Column(db.String(10))
     result=db.Column(db.Text)
-    created_at = db.Column(db.DateTime(timezone=True), default=get_ist_time)
+    created_at = db.Column(db.DateTime(timezone=True), 
+                          default=lambda: datetime.now(timezone.utc))
 
 class coverletter(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id=db.Column(db.Integer,db.ForeignKey('users.id'))
     style=db.Column(db.String(20))
     cover=db.Column(db.Text)
-    created_at = db.Column(db.DateTime(timezone=True), default=get_ist_time)
+    created_at = db.Column(db.DateTime(timezone=True), 
+                          default=lambda: datetime.now(timezone.utc))
 
 
 
@@ -368,7 +374,7 @@ def result_page():
 
 #-----------------------------------------COVER LETTER SECTION----------------------------------------------
 def generate_cover_letter(name, email, job_title, job_desc, company, skills, interest, resumetext, cover_style, address, date, hiringmanager, phone, platform,companyAddress,instructions):
-    client = genai.Client("gemini_api")
+    client = genai.Client(api_key=os.getenv("gemini_api"))
 
     prompt = f"""
 You are an expert in professional cover letter writing. Generate a **{cover_style} cover letter** tailored for the applicant based on the provided details. The cover letter should be **engaging, job-focused, and ATS-friendly**, ensuring it aligns well with the job description.
@@ -483,6 +489,90 @@ def coverresultfn():
 @app.route('/base')
 def base():
     return render_template('base.html')
+
+# Add a template filter to format dates in IST
+@app.template_filter('format_datetime')
+def format_datetime(value):
+    """Convert UTC datetime to IST for display"""
+    if value is None:
+        return ""
+    ist = pytz.timezone('Asia/Kolkata')
+    utc_time = value.replace(tzinfo=timezone.utc)
+    ist_time = utc_time.astimezone(ist)
+    return ist_time.strftime('%A %d %B %Y %I:%M %p')
+
+def extract_medical_text(filepath):
+    """Extract text from PDF or image files"""
+    if filepath.lower().endswith('.pdf'):
+        # Extract text from PDF using PyMuPDF
+        doc = fitz.open(filepath)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        return text
+    else:
+        # Extract text from image using EasyOCR
+        reader = easyocr.Reader(['en'])
+        result = reader.readtext(filepath)
+        return ' '.join([item[1] for item in result])
+
+def analyze_medical_data(text):
+    """Analyze medical text using Google Gemini"""
+    client = genai.Client(api_key=os.getenv("gemini_api"))
+    
+    prompt = f"""
+    Analyze this medical document and extract the following information in a structured format:
+    1. Patient Information
+    2. Vital Signs
+    3. Medications
+    4. Diagnoses
+    5. Lab Results
+    6. Treatment Plan
+
+    Please format the response with clear headings and bullet points.
+    Use emojis to make it visually appealing.
+
+    Medical Text:
+    {text}
+    """
+
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+    return response.text
+
+@app.route("/medical", methods=["GET", "POST"])
+@login_required
+def medical_extract():
+    if request.method == "POST":
+        if 'document' not in request.files:
+            flash('No file uploaded')
+            return redirect(request.url)
+            
+        file = request.files['document']
+        if file.filename == '':
+            flash('No file selected')
+            return redirect(request.url)
+
+        # Save file
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+        file.save(filepath)
+
+        try:
+            # Extract text from document
+            extracted_text = extract_medical_text(filepath)
+            
+            # Analyze with Gemini
+            result = analyze_medical_data(extracted_text)
+            
+            # Clean up
+            os.remove(filepath)
+            
+            return render_template('medical_result.html', result=result)
+            
+        except Exception as e:
+            flash(f'Error processing document: {str(e)}')
+            return redirect(request.url)
+
+    return render_template('medical_upload.html')
 
 if __name__ == "__main__":
     app.run(debug=True,host="0.0.0.0")
