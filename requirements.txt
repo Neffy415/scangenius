@@ -35,8 +35,5 @@ gunicorn==23.0.0
 
 # Utilities
 python-dotenv        # For loading .env files
-typing_extensions==4.12.2 # Often required by pydantic, fastapi, etc.
 pytz==2025.2          # Timezone support, often used with datetime/SQLAlchemy
 
-# --- Potentially Unnecessary ---
-# websockets==14.2 # Remove unless your app specifically uses WebSockets
