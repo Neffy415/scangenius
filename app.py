@@ -13,6 +13,7 @@ import easyocr
 from datetime import datetime, timezone
 import pytz
 import fitz  # PyMuPDF
+from PyPDF2 import PdfReader
 
 # Remove the existing IST timezone code and replace with this
 def get_ist_time():
@@ -159,35 +160,28 @@ def pdf_to_text(filepath):
     reader = PdfReader(filepath)
     text = ""
     for page in reader.pages:
-        text += page.extract_text()
-
-    return text
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text + "\n"
+    return text.strip()
 
 
 
 
 def extract_text_from_image(filepath):
-    """ Extracts text from an uploaded resume image using Tesseract OCR with preprocessing """
+    """Extracts text from either an image (via OCR) or a PDF file."""
     try:
         if is_image(filepath):
             reader = easyocr.Reader(['en'], gpu=False)
-    
-
             result = reader.readtext(filepath)
-    
             text = '\n'.join([detection[1] for detection in result])
-            return text if text else "No text detected in the image"
-            
-
+            return text.strip() if text else "No text detected in the image"
         else:
-            res = pdf_to_text(filepath)  # Handle PDFs separately
-
-        return res
+            return pdf_to_text(filepath)
 
     except Exception as e:
-        print(f"Error processing image: {str(e)}")
+        print(f"Error processing file: {str(e)}")
         return ""
-
 
 def evaluate_resume(extracted_text, job_desc):
 
