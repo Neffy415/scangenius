@@ -9,7 +9,6 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
-from PyPDF2 import PdfReader
 import easyocr
 from datetime import datetime, timezone
 import pytz
