@@ -18,6 +18,7 @@ psycopg2-binary      # PostgreSQL driver
 
 # PDF and OCR
 PyMuPDF
+PyPDF2
 easyocr
 pillow==11.1.0       # Image handling, required by easyocr
 numpy==2.2.3         # Numerical processing, required by easyocr/torch
