@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 load_dotenv()
 from PyPDF2 import PdfReader
 import easyocr
-from sqlalchemy_utc import UtcDateTime
 from datetime import datetime, timezone
 import pytz
 import fitz  # PyMuPDF
