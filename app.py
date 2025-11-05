@@ -282,7 +282,7 @@ You are an expert in ATS resume scoring. Given the extracted resume text below, 
 
 
     # Call Google Gemini API
-    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
 
     return response.text if response else "Error: No response from AI."
 
@@ -416,7 +416,7 @@ You are an expert in professional cover letter writing. Generate a **{cover_styl
     
 
 
-    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
     return response.text if response else "Error: No response from AI."
 
 
