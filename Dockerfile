@@ -1,12 +1,20 @@
-FROM python:3.11-slim-buster
-ENV DEBIAN_FRONTEND=noninteractive 
-WORKDIR /app 
-# Update and upgrade system packages *before* copying requirements 
-RUN apt-get update -y && apt-get upgrade -y 
-# Install PostgreSQL client development libraries (if needed) 
-RUN apt-get install -y libpq-dev 
-# Copy requirements *after* installing system deps 
-COPY requirements.txt . 
-# Install Python dependencies 
-RUN pip install -r requirements.txt --no-cache-dir COPY . . 
+# Use a supported Debian
+FROM python:3.11-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+
+# Install system deps (no upgrade step needed in containers)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libpq-dev gcc \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy app code
+COPY . .
+
 CMD ["gunicorn", "app:app"]
