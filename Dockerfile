@@ -1,10 +1,11 @@
-FROM python:3.11-slim-buster
+FROM python:3.11-slim-bookworm
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
 # Update and upgrade system packages *before* copying requirements
-
+RUN apt-get update && apt-get install
 
 # Install PostgreSQL client development libraries (if needed)
 RUN apt-get install -y libpq-dev
