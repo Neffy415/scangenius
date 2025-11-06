@@ -19,9 +19,9 @@ psycopg2-binary      # PostgreSQL driver
 # PDF and OCR
 PyMuPDF
 PyPDF2
-easyocr
+
 pillow==11.1.0       # Image handling, required by easyocr
-numpy==2.2.3         # Numerical processing, required by easyocr/torch
+      # Numerical processing, required by easyocr/torch
 
 # Google GenAI Client and Dependencies
 google-genai==1.2.0
@@ -36,4 +36,5 @@ gunicorn==23.0.0
 # Utilities
 python-dotenv        # For loading .env files
 pytz==2025.2          # Timezone support, often used with datetime/SQLAlchemy
+
 
