@@ -3,12 +3,14 @@ from google import genai
 from flask import Flask, render_template, request, redirect, url_for, session,flash
 import re
 import mimetypes
+import requests  # For OCR.space API calls
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
+# easyocr removed - using OCR.space API instead
 from datetime import datetime, timezone
 import pytz
 import fitz  # PyMuPDF
@@ -174,7 +176,10 @@ def extract_text_from_image(filepath):
     try:
         if is_image(filepath):
             # Use OCR.space API for images
-            api_key = os.getenv("OCR_SPACE_API_KEY")  # ✅ Free API key
+            api_key = os.getenv("OCR_SPACE_API_KEY")  # Free API key
+            
+            if not api_key:
+                return "Error: OCR_SPACE_API_KEY not configured"
             
             # OCR.space API endpoint
             url = "https://api.ocr.space/parse/image"
@@ -200,7 +205,8 @@ def extract_text_from_image(filepath):
                 
                 # Extract text from response
                 if result.get('IsErroredOnProcessing'):
-                    return "Error: Could not process image with OCR"
+                    error_msg = result.get('ErrorMessage', ['Unknown error'])
+                    return f"Error: Could not process image with OCR - {error_msg[0]}"
                 
                 parsed_text = result.get('ParsedResults', [])
                 if parsed_text:
@@ -214,7 +220,7 @@ def extract_text_from_image(filepath):
 
     except Exception as e:
         print(f"Error processing file: {str(e)}")
-        return ""
+        return f"Error processing file: {str(e)}"
 
 def evaluate_resume(extracted_text, job_desc):
 
@@ -365,17 +371,12 @@ def upload_file():
         #KEYWORD OPTIMIZATION SCORE - More flexible pattern
         matchs = re.search(r'Keyword\s*Optimization\s*Score\s*:?\s*(\d+)', result, re.IGNORECASE)
         key_score = matchs.group(1) if matchs else "0"
-        session["key-score"] = key_score
 
         #INDUSTRY RELEVANCE SCORE - More flexible pattern
         matchs = re.search(r'Industry\s*Relevance\s*Score\s*:?\s*(\d+)', result, re.IGNORECASE)
         ind_score = matchs.group(1) if matchs else "0"
-        session["ind-score"] = ind_score
         
-        # Store result in session and redirect to result page
-        session["ats_result"] = result
-        session["ats_score"] = score
-
+        # Save to database (removed session storage to fix cookie size issue)
         new_entry = ats(user_id=current_user.id, Resume=file.filename, ats_score=score, skill_score=skill_score, tech_score=tech_score, keyword_score=key_score, industry=ind_score, result=result)
         db.session.add(new_entry)
         db.session.commit()
@@ -387,15 +388,28 @@ def upload_file():
 
 
 @app.route("/result")
+@login_required
 def result_page():
     """ Displays the ATS evaluation result on a separate clean page """
-    result = session.get("ats_result", "No result available")
-    score=session.get("ats_score","No score Found")
-    skill_score=session.get("skill-score")
-    tech_score=session.get("tech-score")
-    key_score=session.get("key-score")
-    ind_score=session.get("ind-score")
-    return render_template("result.html", result=result,score=score,skill_score=skill_score,tech_score=tech_score,key_score=key_score,ind_score=ind_score)
+    # Get the latest ATS record from database instead of session
+    latest_record = ats.query.filter_by(user_id=current_user.id).order_by(ats.created_at.desc()).first()
+    
+    if not latest_record:
+        return render_template("result.html", 
+                             result="No result available. Please scan a resume first.",
+                             score="0",
+                             skill_score="0",
+                             tech_score="0",
+                             key_score="0",
+                             ind_score="0")
+    
+    return render_template("result.html", 
+                         result=latest_record.result,
+                         score=latest_record.ats_score,
+                         skill_score=latest_record.skill_score,
+                         tech_score=latest_record.tech_score,
+                         key_score=latest_record.keyword_score,
+                         ind_score=latest_record.industry)
 
 #-----------------------------------------COVER LETTER SECTION----------------------------------------------
 def generate_cover_letter(name, email, job_title, job_desc, company, skills, interest, resumetext, cover_style, address, date, hiringmanager, phone, platform,companyAddress,instructions):
@@ -492,11 +506,9 @@ def coverletters():
             return 'Couldnt! extract resume text! Retry !'
         
         cover=generate_cover_letter(name,email,job_title,job_desc,company,skills,interest,resumetext,cover_Style,address,Date,Hiring,phone,platform,companyaddress,instructions)
-        session['CoverLetter']=cover
-        session['style']=cover_Style
-        coverStyle=session.get('style')
-
-        new_entry=coverletter(user_id=current_user.id,style=coverStyle,cover=cover)
+        
+        # Save to database (removed session storage to fix cookie size issue)
+        new_entry=coverletter(user_id=current_user.id,style=cover_Style,cover=cover)
         db.session.add(new_entry)
         db.session.commit()
 
@@ -506,10 +518,19 @@ def coverletters():
     return render_template('coverletterform.html')
 
 @app.route('/cover')
+@login_required
 def coverresultfn():
-    coverletter=session.get('CoverLetter','No cover letter generated error!')
-    style=session.get('style')
-    return render_template('coverresult.html',coverletter=coverletter,style=style)
+    # Get the latest cover letter from database instead of session
+    latest_cover = coverletter.query.filter_by(user_id=current_user.id).order_by(coverletter.created_at.desc()).first()
+    
+    if not latest_cover:
+        return render_template('coverresult.html', 
+                             coverletter='No cover letter generated. Please create one first.',
+                             style='Default')
+    
+    return render_template('coverresult.html',
+                         coverletter=latest_cover.cover,
+                         style=latest_cover.style)
 
 @app.route('/base')
 def base():
@@ -536,10 +557,35 @@ def extract_medical_text(filepath):
             text += page.get_text()
         return text
     else:
-        # Extract text from image using EasyOCR
-        reader = easyocr.Reader(['en'])
-        result = reader.readtext(filepath)
-        return ' '.join([item[1] for item in result])
+        # Extract text from image using OCR.space API
+        api_key = os.getenv("OCR_SPACE_API_KEY")
+        
+        if not api_key:
+            return "Error: OCR_SPACE_API_KEY not configured"
+        
+        url = "https://api.ocr.space/parse/image"
+        
+        with open(filepath, 'rb') as f:
+            payload = {
+                'apikey': api_key,
+                'language': 'eng',
+                'isOverlayRequired': False,
+                'detectOrientation': True,
+                'scale': True,
+                'OCREngine': 2,
+            }
+            
+            files = {'file': f}
+            response = requests.post(url, files=files, data=payload)
+            result = response.json()
+            
+            if result.get('IsErroredOnProcessing'):
+                return "Error: Could not process image"
+            
+            parsed_text = result.get('ParsedResults', [])
+            if parsed_text:
+                return parsed_text[0].get('ParsedText', '')
+            return ''
 
 def analyze_medical_data(text):
     """Analyze medical text using Google Gemini"""
