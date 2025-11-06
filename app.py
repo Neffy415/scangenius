@@ -9,7 +9,6 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from sqlalchemy import inspect
 from dotenv import load_dotenv
 load_dotenv()
-import easyocr
 from datetime import datetime, timezone
 import pytz
 import fitz  # PyMuPDF
@@ -169,14 +168,48 @@ def pdf_to_text(filepath):
 
 
 def extract_text_from_image(filepath):
-    """Extracts text from either an image (via OCR) or a PDF file."""
+    """
+    Extracts text from either an image (via OCR.space API) or a PDF file.
+    """
     try:
         if is_image(filepath):
-            reader = easyocr.Reader(['en'], gpu=False)
-            result = reader.readtext(filepath)
-            text = '\n'.join([detection[1] for detection in result])
-            return text.strip() if text else "No text detected in the image"
+            # Use OCR.space API for images
+            api_key = os.getenv("OCR_SPACE_API_KEY")  # ✅ Free API key
+            
+            # OCR.space API endpoint
+            url = "https://api.ocr.space/parse/image"
+            
+            # Prepare the file for upload
+            with open(filepath, 'rb') as f:
+                payload = {
+                    'apikey': api_key,
+                    'language': 'eng',
+                    'isOverlayRequired': False,
+                    'detectOrientation': True,
+                    'scale': True,
+                    'OCREngine': 2,  # Engine 2 is better for documents
+                }
+                
+                files = {
+                    'file': f
+                }
+                
+                # Make API request
+                response = requests.post(url, files=files, data=payload)
+                result = response.json()
+                
+                # Extract text from response
+                if result.get('IsErroredOnProcessing'):
+                    return "Error: Could not process image with OCR"
+                
+                parsed_text = result.get('ParsedResults', [])
+                if parsed_text:
+                    text = parsed_text[0].get('ParsedText', '')
+                    return text.strip() if text else "No text detected in the image"
+                else:
+                    return "No text detected in the image"
         else:
+            # Use existing PDF processing (lightweight)
             return pdf_to_text(filepath)
 
     except Exception as e:
