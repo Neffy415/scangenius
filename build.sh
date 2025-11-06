@@ -4,10 +4,10 @@
 apt-get update -y
 
 # Install Tesseract OCR engine
-apt-get install -y tesseract-ocr
+
 
 # Install English language pack (if needed)
-apt-get install -y tesseract-ocr-eng
+
 
 # Install poppler-utils (for PDF processing with pdf2image)
 apt-get install -y poppler-utils
